@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+  <meta charset="UTF-8">
+  <title>報價計算機</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      background-color: #f4f4f4;
+    }
+
+    h1,
+    h2 {
+      text-align: center;
+      color: #333;
+    }
+
+    h1 {
+      margin-top: 20px;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background-color: #fff;
+      padding: 20px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    }
+
+    .section {
+      margin-bottom: 20px;
+      padding-bottom: 15px;
+      border-bottom: 1px solid #ddd;
+    }
+
+    .section h3 {
+      margin: 0 0 10px 0;
+      color: #666;
+    }
+
+    .section input[type="number"],
+    .section input[type="text"],
+    .section input[type="email"],
+    .section select {
+      width: 200px;
+      padding: 5px;
+      margin-bottom: 10px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+
+    .section label {
+      display: inline-block;
+      width: 250px;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+
+    .subtotal {
+      font-weight: bold;
+      margin-top: 10px;
+      color: #333;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    button {
+      display: block;
+      width: 100%;
+      background-color: #4CAF50;
+      color: white;
+      padding: 10px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+
+    button:hover {
+      background-color: #45a049;
+    }
+
+    .result {
+      background-color: #f9f9f9;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      margin-top: 20px;
+    }
+
+    .result p {
+      margin: 5px 0;
+      font-weight: bold;
+      color: #333;
+    }
+
+    .section-title {
+      font-weight: bold;
+      color: #007acc;
+    }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.5.28/dist/jspdf.plugin.autotable.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vxe-table-plugin-export-pdf/fonts/source-han-sans-normal.js"></script>
+</head>
+
+<body>
+  <div class="container">
+    <h1>報價計算機</h1>
+
+    <!-- 基本資料 -->
+    <div class="section">
+      <h3>基本資料</h3>
+      <label>客戶名稱：<input type="text" id="customerName"></label><br>
+      <label>客戶電子信箱：<input type="email" id="customerEmail"></label><br>
+      <label>客戶序號：<input type="number" id="sequenceNumber" min="1" max="1000000" required>
+        <label>客戶編號：<input type="text" id="customerNumber" readonly></label><br>
+        <button type="button" onclick="generateCustomerNumber()">生成編號</button></label>
+    </div>
+
+    <!-- 書籍規格 -->
+    <div class="section">
+      <h3>書籍規格</h3>
+      <label>書籍尺寸：<select id="bookSize" onchange="toggleOtherInput('bookSize')">
+          <option value="25開/15x21cm">25開：15x21cm</option>
+          <option value="18開/17x23cm">18開：17x23cm</option>
+          <option value="其他">其他：由出版專家決定</option>
+        </select><input type="text" id="bookSizeOther" class="hidden"></label><br>
+
+      <label>字數：<select id="wordCount">
+          <option value="30000">3萬字</option>
+          <option value="40000">4萬字</option>
+          <option value="50000">5萬字</option>
+          <option value="60000">6萬字</option>
+          <option value="70000">7萬字</option>
+        </select></label><br>
+
+      <label>頁數：<select id="pageCount">
+          <option value="200">100-200頁</option>
+          <option value="300">200-300頁</option>
+          <option value="400">300-400頁</option>
+          <option value="500">400-500頁</option>
+        </select></label><br>
+
+      <label>內文：<select id="innerPagesColor">
+          <option value="單色">單色</option>
+          <option value="雙色">雙色</option>
+          <option value="彩色">彩色</option>
+        </select></label><br>
+
+      <label>封面：<select id="coverColor">
+          <option value="單色">單色</option>
+          <option value="雙色">雙色</option>
+          <option value="彩色">彩色</option>
+        </select></label><br>
+
+      <label>書籍印量：<select id="bookPrintQuantity">
+          <option value="300">300本</option>
+          <option value="500">500本</option>
+          <option value="1000">1000本</option>
+          <option value="1500">1500本</option>
+          <option value="2000">2000本</option>
+        </select></label>
+    </div>
+
+    <!-- 付款資訊 -->
+    <div class="section">
+      <h3>付款資訊</h3>
+      <label>付款人/公司名稱：<input type="text" id="payerName"></label><br>
+      <label>統一編號：<input type="text" id="payerTaxID"></label><br>
+      <label>電子發票寄送地址：<input type="text" id="payerInvoiceAddress"></label>
+    </div>
+
+    <!-- 企劃費用 -->
+    <div class="section">
+      <h3>企劃費用</h3>
+      <label><input type="checkbox" id="planningConsulting" value="50000">專案統籌（諮詢+提案簡報）</label><br>
+      <label><input type="checkbox" id="contentPlanning" value="10000">書籍出版內容計畫</label><br>
+      <label><input type="checkbox" id="interviewEditing" value="2.5">特約採訪編輯</label><br>
+      <span class="subtotal">企劃費用小計：<span id="planningSubtotal">0</span></span>
+    </div>
+
+    <!-- 編輯費用 -->
+    <div class="section">
+      <h3>編輯費用</h3>
+      <label><input type="checkbox" id="textEditing" value="0.5">編輯（潤/編/校）</label><br>
+      <label><input type="checkbox" id="layoutDesign" value="8000">內文版型設計</label><br>
+      <label><input type="checkbox" id="coverDesign" value="8000">封面設計（內部設計師）</label><br>
+      <label><input type="checkbox" id="designerCoverDesign" value="15000*1.05">封面設計（外部設計師）</label><br>
+      <label>書腰(單位：款)：<input type="number" id="bookBellyBand" value="0"></label><br>
+      <label><input type="checkbox" id="ebookProduction" value="20000">電子書製作</label><br>
+      <span class="subtotal">編輯費用小計：<span id="editingSubtotal">0</span></span>
+    </div>
+
+    <!-- 印製 -->
+    <div class="section">
+      <h3>印製</h3>
+      <label>紙張報價<br>
+        內文：<span id="innerPagesPaperCost"></span><br>
+        封面：<span id="coverPaperCost"></span><br>
+        扉頁：<span id="titlePagePaperCost"></span>
+      </label><br>
+      <label>製版報價<br>
+        內文：<span id="innerPagesPlateCost"></span><br>
+        封面：<span id="coverPlateCost"></span>
+      </label><br>
+      <label>封面上光報價：<select id="glossCost">
+          <option value="1000">霧光</option>
+          <option value="1000">亮光</option>
+          <option value="1000">局部光</option>
+        </select></label><br>
+      <label>印刷報價<br>
+        內文：<span id="innerPagesPrintCost"></span><br>
+        封面：<span id="coverPrintCost"></span><br>
+        書籤：<span id="bookmarkPrintCost"></span>
+      </label><br>
+      <label>裝訂報價：<span id="bindingCost"></span></label><br>
+      <span class="subtotal">印製費用小計：<span id="printingSubtotal">0</span></span><br>
+      <span class="subtotal">印製費用小計(含30%服務費)：<span id="printingSubtotalAll">0</span></span>
+    </div>
+
+    <!-- 通路 -->
+    <div class="section">
+      <h3>通路服務</h3>
+      <label><input type="checkbox" id="distributionManagement" value="3000"> 經銷管理</label><br>
+      <label><input type="checkbox" id="storageDistribution" value="6000"> 倉儲發行</label><br>
+      <span class="subtotal">通路服務費用小計：<span id="distributionSubtotal">0</span></span>
+    </div>
+
+    <!-- 行銷 -->
+    <div class="section">
+      <h3>媒體套餐</h3>
+      <label><input type="checkbox" id="mediaBigPlatinum" value="68000*1.3"> 大白金專案（包含line
+        today,yahoo,google,hinet,pchome,match,life,yam,經濟日報,痞客邦,VOCUS,Blogger,t17,boboyo）</label><br>
+      <label><input type="checkbox" id="mediaSmallPlatinum" value="32000*1.3"> 小白金專案（line
+        today,yahoo,google,hinet,pchome,match,life,yam,理財周刊,痞客邦,VOCUS,Blogger,t17,boboyo,popdaily）</label><br>
+      <h3>指定媒體</h3>
+      <label><input type="checkbox" id="mediaCentralNews" value="20000*1.5"> 中央社</label><br>
+      <label><input type="checkbox" id="mediaEconomicDaily" value="20000*1.5"> 經濟日報</label><br>
+      <label><input type="checkbox" id="mediaCommercialTimes" value="20000*1.5"> 工商時報</label><br>
+      <h3>線上活動</h3>
+      <label><input type="checkbox" id="onlineLiveEvent" value="20000*1.5"> 線上直播策展活動</label><br>
+      <h3>線下活動</h3>
+      <label><input type="checkbox" id="offlineBookstoreEvent" value="20000*1.5"> 新書分享會</label><br>
+      <label><input type="checkbox" id="offlineSpecialForum" value="50000*1.5"> 大型論壇活動</label><br>
+      <span class="subtotal">行銷費用小計：<span id="marketingSubtotal">0</span></span>
+    </div>
+
+    <!-- 折扣和稅金 -->
+    <div class="section">
+      <h3>折扣和稅金</h3>
+      <label>折扣率（%）：<input type="number" step="0.01" id="discount" value="0"></label><br>
+      <label>稅率（%）：<input type="number" step="0.01" id="taxRate" value="5" readonly></label>
+    </div>
+
+    <button type="button" onclick="calculateQuote()">計算報價</button>
+    <h2>報價結果</h2>
+    <div class="result">
+      <p>總計（未稅）：<span id="subtotalResult"></span></p>
+      <p>折扣（未稅）：<span id="discountResult"></span></p>
+      <p>總計（含稅）：<span id="totalResult"></span></p>
+    </div>
+    <h2>付款計畫</h2>
+    <div class="result">
+      <p>第一筆付款：<span id="firstPayment"></span></p>
+      <p>第二筆付款：<span id="secondPayment"></span></p>
+      <p>第三筆付款：<span id="thirdPayment"></span></p>
+    </div>
+    <button type="button" onclick="generatePDF()">生成 PDF 報價單</button>
+  </div>
+
+  <script>
+    const customers = {};
+
+    function formatCurrency(amount) {
+      return `$${amount.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`;
+    }
+
+    function addBusinessDays(date, days) {
+      let currentDate = new Date(date);
+      let addedDays = 0;
+      while (addedDays < days) {
+        currentDate.setDate(currentDate.getDate() + 1);
+        if (currentDate.getDay() !== 0 && currentDate.getDay() !== 6) {
+          addedDays++;
+        }
+      }
+      return currentDate;
+    }
+
+    function generateCustomerNumber() {
+      const customerName = document.getElementById('customerName').value.trim();
+      const sequenceNumberInput = document.getElementById('sequenceNumber');
+      let sequenceNumber = sequenceNumberInput.value;
+
+      if (customerName === '' || sequenceNumber === '') {
+        alert("請填寫客戶名稱和序號！");
+        return;
+      }
+
+      sequenceNumber = sequenceNumber.padStart(3, '0');
+
+      // 記錄客戶名稱與序號的關聯
+      customers[customerName] = sequenceNumber;
+
+      const date = new Date();
+      const formattedDate = (date.getMonth() + 1).toString().padStart(2, '0') + '/' + date.getDate().toString().padStart(2, '0');
+      const customerNumber = `C${sequenceNumber}${formattedDate}`;
+      document.getElementById('customerNumber').value = customerNumber;
+    }
+
+    function toggleOtherInput(elementId) {
+      const element = document.getElementById(elementId);
+      const otherInput = document.getElementById(`${elementId}Other`);
+      if (element.value === '其他') {
+        otherInput.classList.remove('hidden');
+      } else {
+        otherInput.classList.add('hidden');
+      }
+    }
+
+    function calculateQuote() {
+      const wordCount = parseInt(document.getElementById('wordCount').value, 10);
+      const pageCount = parseInt(document.getElementById('pageCount').value, 10);
+      const bookPrintQuantity = parseInt(document.getElementById('bookPrintQuantity').value, 10);
+
+      // 企劃費用
+      const planningConsulting = document.getElementById('planningConsulting').checked ? parseFloat(document.getElementById('planningConsulting').value) : 0;
+      const contentPlanning = document.getElementById('contentPlanning').checked ? parseFloat(document.getElementById('contentPlanning').value) : 0;
+      const interviewEditingMultiplier = document.getElementById('interviewEditing').checked ? parseFloat(document.getElementById('interviewEditing').value) : 0;
+      const interviewEditing = interviewEditingMultiplier * wordCount;
+      const planningTotal = planningConsulting + contentPlanning + interviewEditing;
+      document.getElementById('planningSubtotal').innerText = formatCurrency(planningTotal);
+
+      // 編輯費用
+      const textEditingMultiplier = document.getElementById('textEditing').checked ? parseFloat(document.getElementById('textEditing').value) : 0;
+      const textEditing = textEditingMultiplier * wordCount;
+      const layoutDesign = document.getElementById('layoutDesign').checked ? parseFloat(document.getElementById('layoutDesign').value) : 0;
+      const coverDesign = document.getElementById('coverDesign').checked ? parseFloat(document.getElementById('coverDesign').value) : 0;
+      const designerCoverDesignMultiplier = document.getElementById('designerCoverDesign').checked ? parseFloat(document.getElementById('designerCoverDesign').value.split('*')[1]) : 0;
+      const designerCoverDesign = Math.round(designerCoverDesignMultiplier * 15000);
+      const bookBellyBand = parseFloat(document.getElementById('bookBellyBand').value) || 0;
+      const ebookProduction = document.getElementById('ebookProduction').checked ? parseFloat(document.getElementById('ebookProduction').value) : 0;
+      const editingTotal = textEditing + layoutDesign + coverDesign + designerCoverDesign + bookBellyBand + ebookProduction;
+      document.getElementById('editingSubtotal').innerText = formatCurrency(editingTotal);
+
+      // 印製
+      const innerPagesPaperCost = 0.054 * pageCount * bookPrintQuantity;
+      const coverPaperCost = 1.7 * bookPrintQuantity;
+      const titlePagePaperCost = 1.3 * bookPrintQuantity;
+      const innerPagesPlateCost = 68 * pageCount;
+      const coverPlateCost = 1900;
+      const glossCost = parseFloat(document.getElementById('glossCost').value) || 0;
+      const innerPagesPrintCost = 0.035 * pageCount * bookPrintQuantity;
+      const coverPrintCost = 1 * bookPrintQuantity;
+      const bookmarkPrintCost = 0.8 * bookPrintQuantity;
+      const bindingCost = 6.5 * bookPrintQuantity;
+      const printingTotal = innerPagesPaperCost + coverPaperCost + titlePagePaperCost + innerPagesPlateCost + coverPlateCost + glossCost + innerPagesPrintCost + coverPrintCost + bookmarkPrintCost + bindingCost;
+      const printingTotalAll = (innerPagesPaperCost + coverPaperCost + titlePagePaperCost + innerPagesPlateCost + coverPlateCost + glossCost + innerPagesPrintCost + coverPrintCost + bookmarkPrintCost + bindingCost) * 1.3;
+      document.getElementById('innerPagesPaperCost').innerText = formatCurrency(innerPagesPaperCost);
+      document.getElementById('coverPaperCost').innerText = formatCurrency(coverPaperCost);
+      document.getElementById('titlePagePaperCost').innerText = formatCurrency(titlePagePaperCost);
+      document.getElementById('innerPagesPlateCost').innerText = formatCurrency(innerPagesPlateCost);
+      document.getElementById('coverPlateCost').innerText = formatCurrency(coverPlateCost);
+      document.getElementById('innerPagesPrintCost').innerText = formatCurrency(innerPagesPrintCost);
+      document.getElementById('coverPrintCost').innerText = formatCurrency(coverPrintCost);
+      document.getElementById('bookmarkPrintCost').innerText = formatCurrency(bookmarkPrintCost);
+      document.getElementById('bindingCost').innerText = formatCurrency(bindingCost);
+      document.getElementById('printingSubtotal').innerText = formatCurrency(printingTotal);
+      document.getElementById('printingSubtotalAll').innerText = formatCurrency(printingTotalAll);
+      // 通路
+      const distributionManagement = document.getElementById('distributionManagement').checked ? parseFloat(document.getElementById('distributionManagement').value) : 0;
+      const storageDistribution = document.getElementById('storageDistribution').checked ? parseFloat(document.getElementById('storageDistribution').value) : 0;
+      const distributionTotal = distributionManagement + storageDistribution;
+      document.getElementById('distributionSubtotal').innerText = formatCurrency(distributionTotal);
+
+      // 行銷
+      const mediaBigPlatinumMultiplier = document.getElementById('mediaBigPlatinum').checked ? parseFloat(document.getElementById('mediaBigPlatinum').value.split('*')[1]) : 0;
+      const mediaBigPlatinum = Math.round(mediaBigPlatinumMultiplier * 68000);
+      const mediaSmallPlatinumMultiplier = document.getElementById('mediaSmallPlatinum').checked ? parseFloat(document.getElementById('mediaSmallPlatinum').value.split('*')[1]) : 0;
+      const mediaSmallPlatinum = Math.round(mediaSmallPlatinumMultiplier * 32000);
+      const mediaCentralNewsMultiplier = document.getElementById('mediaCentralNews').checked ? parseFloat(document.getElementById('mediaCentralNews').value.split('*')[1]) : 0;
+      const mediaCentralNews = Math.round(mediaCentralNewsMultiplier * 20000);
+      const mediaEconomicDailyMultiplier = document.getElementById('mediaEconomicDaily').checked ? parseFloat(document.getElementById('mediaEconomicDaily').value.split('*')[1]) : 0;
+      const mediaEconomicDaily = Math.round(mediaEconomicDailyMultiplier * 20000);
+      const mediaCommercialTimesMultiplier = document.getElementById('mediaCommercialTimes').checked ? parseFloat(document.getElementById('mediaCommercialTimes').value.split('*')[1]) : 0;
+      const mediaCommercialTimes = Math.round(mediaCommercialTimesMultiplier * 20000);
+      const onlineLiveEventMultiplier = document.getElementById('onlineLiveEvent').checked ? parseFloat(document.getElementById('onlineLiveEvent').value.split('*')[1]) : 0;
+      const onlineLiveEvent = Math.round(onlineLiveEventMultiplier * 20000);
+      const offlineBookstoreEventMultiplier = document.getElementById('offlineBookstoreEvent').checked ? parseFloat(document.getElementById('offlineBookstoreEvent').value.split('*')[1]) : 0;
+      const offlineBookstoreEvent = Math.round(offlineBookstoreEventMultiplier * 20000);
+      const offlineSpecialForumMultiplier = document.getElementById('offlineSpecialForum').checked ? parseFloat(document.getElementById('offlineSpecialForum').value.split('*')[1]) : 0;
+      const offlineSpecialForum = Math.round(offlineSpecialForumMultiplier * 50000);
+      const marketingTotal = mediaBigPlatinum + mediaSmallPlatinum + mediaCentralNews + mediaEconomicDaily + mediaCommercialTimes + onlineLiveEvent + offlineBookstoreEvent + offlineSpecialForum;
+      document.getElementById('marketingSubtotal').innerText = formatCurrency(marketingTotal);
+
+      // 總報價（未稅）
+      const subtotal = Math.round(planningTotal + editingTotal + printingTotalAll + distributionTotal + marketingTotal);
+
+      // 折扣和稅金
+      const discountRate = parseFloat(document.getElementById('discount').value) / 100 || 0;
+      const taxRate = parseFloat(document.getElementById('taxRate').value) / 100 || 0;
+      const discountAmount = subtotal * discountRate;
+      const discountedSubtotal = subtotal - discountAmount;
+      const taxAmount = Math.round(discountedSubtotal * taxRate);
+      const total = discountedSubtotal + taxAmount;
+
+      // 計算分段付款
+      let firstPayment = 0, secondPayment = 0, thirdPayment = 0;
+      if (planningTotal > 0) {
+        firstPayment = Math.round(total * 0.4);
+        secondPayment = Math.ceil(total * 0.3);
+        thirdPayment = Math.floor(total * 0.3);
+      } else {
+        firstPayment = Math.ceil(total * 0.5);
+        secondPayment = Math.floor(total * 0.5);
+      }
+
+      // 更新報價結果
+      document.getElementById('subtotalResult').innerText = formatCurrency(discountedSubtotal);
+      document.getElementById('discountResult').innerText = formatCurrency(discountAmount);
+      document.getElementById('totalResult').innerText = formatCurrency(total);
+
+      // 更新付款計畫
+      document.getElementById('firstPayment').innerText = formatCurrency(firstPayment);
+      document.getElementById('secondPayment').innerText = secondPayment ? formatCurrency(secondPayment) : '-';
+      document.getElementById('thirdPayment').innerText = thirdPayment ? formatCurrency(thirdPayment) : '-';
+    }
+
+    function generatePDF() {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+
+      doc.setFontSize(12);
+      doc.addFont('SourceHanSans-Normal.ttf', 'SourceHanSans-Normal', 'normal');
+      doc.setFont('SourceHanSans-Normal');
+
+      // 添加標題
+      doc.text('一品OMK報價單', 105, 20, null, null, 'center');
+
+      // 基本資料
+      doc.setFontSize(10)
+      doc.text(`謹致：${document.getElementById(`payerName`).value}`, 20, 40)
+      doc.text(`聯絡人：${document.getElementById('customerName').value}`, 20, 50);
+      doc.text(`聯絡電子信箱：${document.getElementById('customerEmail').value}`, 20, 60);
+      doc.text(`發票寄送地址：${document.getElementById('payerInvoiceAddress').value}`, 20, 70);
+      doc.text(`客戶編號：${document.getElementById('customerNumber').value}`, 150, 40);
+      doc.text(`統一編號：${document.getElementById('payerTaxID').value}`, 150, 50);
+
+      // 報價日期與期限
+      const today = new Date();
+      const formattedDate = `${today.getFullYear()}-${(today.getMonth() + 1).toString().padStart(2, '0')}-${today.getDate().toString().padStart(2, '0')}`;
+      const expiryDate = addBusinessDays(today, 5);
+      const formattedExpiryDate = `${expiryDate.getFullYear()}-${(expiryDate.getMonth() + 1).toString().padStart(2, '0')}-${expiryDate.getDate().toString().padStart(2, '0')}`;
+
+      doc.text(`報價日期：${formattedDate}`, 150, 60);
+      doc.text(`報價期限：${formattedExpiryDate}`, 150, 70);
+
+
+
+      // 書籍規格的描述
+      function getBookSpecs() {
+        const bookSize = document.getElementById('bookSize').value;
+        const wordCount = document.getElementById('wordCount').value;
+        const pageCount = document.getElementById('pageCount').value;
+        const innerPagesColor = document.getElementById('innerPagesColor').value;
+        const coverColor = document.getElementById('coverColor').value;
+        const bookPrintQuantity = document.getElementById('bookPrintQuantity').value;
+        return `書籍尺寸：${bookSize}, 字數：${wordCount}, 頁數：${pageCount}, 內文：${innerPagesColor}, 封面：${coverColor}, 書籍印量：${bookPrintQuantity}`;
+      }
+
+      // 收集項目的描述
+      const planningDescriptions = [];
+      if (document.getElementById('planningConsulting').checked) {
+        planningDescriptions.push('專案統籌（諮詢+提案簡報）');
+      }
+      if (document.getElementById('contentPlanning').checked) {
+        planningDescriptions.push('書籍出版內容計畫');
+      }
+      if (document.getElementById('interviewEditing').checked) {
+        planningDescriptions.push('特約採訪編輯');
+      }
+
+      const editingDescriptions = [];
+      if (document.getElementById('textEditing').checked) {
+        editingDescriptions.push('編輯（潤/編/校）');
+      }
+      if (document.getElementById('layoutDesign').checked) {
+        editingDescriptions.push('內文版型設計');
+      }
+      if (document.getElementById('coverDesign').checked) {
+        editingDescriptions.push('封面設計（內部設計師）');
+      }
+      if (document.getElementById('designerCoverDesign').checked) {
+        editingDescriptions.push('封面設計（外部設計師）');
+      }
+      if (document.getElementById('ebookProduction').checked) {
+        editingDescriptions.push('電子書製作');
+      }
+      const distributionDescriptions = [];
+      if (document.getElementById('distributionManagement').checked) {
+        distributionDescriptions.push('經銷管理');
+      }
+      if (document.getElementById('storageDistribution').checked) {
+        distributionDescriptions.push('倉儲發行');
+      }
+
+      const marketingDescriptions = [];
+      if (document.getElementById('mediaBigPlatinum').checked) {
+        marketingDescriptions.push('大白金專案');
+      }
+      if (document.getElementById('mediaSmallPlatinum').checked) {
+        marketingDescriptions.push('小白金專案');
+      }
+      if (document.getElementById('mediaCentralNews').checked) {
+        marketingDescriptions.push('中央社');
+      }
+      if (document.getElementById('mediaEconomicDaily').checked) {
+        marketingDescriptions.push('經濟日報');
+      }
+      if (document.getElementById('mediaCommercialTimes').checked) {
+        marketingDescriptions.push('工商時報');
+      }
+      if (document.getElementById('onlineLiveEvent').checked) {
+        marketingDescriptions.push('線上直播策展活動');
+      }
+      if (document.getElementById('offlineBookstoreEvent').checked) {
+        marketingDescriptions.push('新書分享會');
+      }
+      if (document.getElementById('offlineSpecialForum').checked) {
+        marketingDescriptions.push('大型論壇活動');
+      }
+
+      // 費用明細
+      const columns = [
+        { header: '報價項目', dataKey: 'item'},
+        { header: '內容', dataKey: 'description'},
+        { header: '報價項目小計', dataKey: 'subtotal'}
+      ];
+
+      const rows = [
+        { item: '企劃報價', description: planningDescriptions.join('、'), subtotal: document.getElementById('planningSubtotal').innerText },
+        { item: '編輯報價', description: editingDescriptions.join('、'), subtotal: document.getElementById('editingSubtotal').innerText },
+        { item: '印製報價', description: getBookSpecs(), subtotal: document.getElementById('printingSubtotalAll').innerText },
+        { item: '通路服務', description: distributionDescriptions.join('、'), subtotal: document.getElementById('distributionSubtotal').innerText },
+        { item: '行銷服務', description: marketingDescriptions.join('、'), subtotal: document.getElementById('marketingSubtotal').innerText },
+        { item: '小計', description: '', subtotal: document.getElementById('subtotalResult').innerText },
+        { item: '優惠折扣', description: '', subtotal: document.getElementById('discountResult').innerText },
+        { item: '總計含稅', description: '', subtotal: document.getElementById('totalResult').innerText }
+      ];
+
+      doc.autoTable(columns, rows, {
+        startY: 90,
+        theme: 'striped',
+        styles: {
+          font: 'SourceHanSans-Normal',
+          halign: 'center',
+          cellWidth: 'wrap'
+        },
+        columnStyles: {
+          item: { cellWidth: 'auto', halign: 'left' },
+          description: { cellWidth: 'auto', halign: 'left' },
+          subtotal: { cellWidth: 'auto', halign: 'right' }
+        }
+      });
+
+      const finalY = doc.lastAutoTable.finalY + 10;
+
+      // 付款計畫
+      doc.setFontSize(12);
+      doc.text('付款計畫', 20, finalY);
+      doc.setFontSize(10);
+      doc.text(`第一筆付款：${document.getElementById('firstPayment').innerText}`, 20, finalY + 10);
+      doc.text(`第二筆付款：${document.getElementById('secondPayment').innerText}`, 20, finalY + 20);
+      doc.text(`第三筆付款：${document.getElementById('thirdPayment').innerText}`, 20, finalY + 30);
+
+      // 分割線
+      const termsStartY = finalY + 40;
+      doc.line(20, termsStartY, 190, termsStartY);
+
+      // 條款與細則
+      doc.setFontSize(12);
+      doc.text('條款與細則', 20, termsStartY + 10);
+      doc.setFontSize(10);
+      const terms = `簽署此報價單即視為您同意上述報價項目之規格建議，` +
+        `如對此報價有任何查詢，請與我們聯絡。\n\n` +
+        `匯款資訊：\n` +
+        `銀行：國泰世華銀行（013）\n` +
+        `分行：台南分行\n` +
+        `戶名：志光保成科技股份有限公司\n` +
+        `匯款帳號：010-03-501522-7`;
+
+      doc.text(terms, 20, termsStartY + 20);
+
+      // 右半部客戶用印/回簽
+      // 確保這部分不被覆蓋，並且明確在頁面的適當位置
+      const signStartY = termsStartY + 60; // 提供足夠空間以避免覆蓋
+      doc.text('客戶用印/回簽：', 110, signStartY);
+
+      // 為客戶簽名預留空間
+      doc.setLineWidth(0.5);
+      doc.line(110, signStartY + 5, 190, signStartY + 5); // 簽名線
+
+      // 保存 PDF
+      doc.save('報價單.pdf');
+    }
+
+  </script>
+
+</body>
+
+</html>
